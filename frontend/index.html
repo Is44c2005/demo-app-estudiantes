@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catálogo de productos</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    h1 { margin-bottom: .25rem; }
+    .toolbar { display: flex; gap: .5rem; margin: 1rem 0; flex-wrap: wrap; }
+    button, input { padding: .5rem .8rem; font: inherit; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #ddd; }
+    .estado { margin: .5rem 0; color: #555; min-height: 1.4em; }
+    .error { color: #b00020; }
+  </style>
+</head>
+<body>
+  <h1>Catálogo de productos</h1>
+  <p>Frontend estático que consume la API en <code id="api-url"></code>.</p>
+
+  <div class="toolbar">
+    <button id="btn-listar">Listar todos</button>
+    <input id="id-producto" type="number" min="1" placeholder="ID" aria-label="ID de producto">
+    <button id="btn-buscar">Buscar por ID</button>
+  </div>
+
+  <div class="estado" id="estado" role="status"></div>
+
+  <table>
+    <thead><tr><th>ID</th><th>Nombre</th><th>Categoría</th><th>Precio</th></tr></thead>
+    <tbody id="cuerpo"></tbody>
+  </table>
+
+  <script>
+    const API = "http://localhost:8080/api/productos";
+    document.getElementById("api-url").textContent = API;
+
+    const cuerpo = document.getElementById("cuerpo");
+    const estado = document.getElementById("estado");
+
+    function mostrar(productos) {
+      cuerpo.replaceChildren(...productos.map(p => {
+        const fila = document.createElement("tr");
+        [p.id, p.nombre, p.categoria, "$" + p.precio.toFixed(2)].forEach(valor => {
+          const celda = document.createElement("td");
+          celda.textContent = valor;
+          fila.appendChild(celda);
+        });
+        return fila;
+      }));
+    }
+
+    async function cargar(url) {
+      estado.className = "estado";
+      estado.textContent = "Cargando...";
+      const inicio = performance.now();
+      try {
+        const respuesta = await fetch(url);
+        const datos = await respuesta.json();
+        if (!respuesta.ok) throw new Error(datos.error || respuesta.statusText);
+        mostrar(Array.isArray(datos) ? datos : [datos]);
+        estado.textContent = `Listo en ${Math.round(performance.now() - inicio)} ms`;
+      } catch (e) {
+        mostrar([]);
+        estado.className = "estado error";
+        estado.textContent = "Error: " + e.message;
+      }
+    }
+
+    document.getElementById("btn-listar").addEventListener("click", () => cargar(API));
+    document.getElementById("btn-buscar").addEventListener("click", () => {
+      const id = document.getElementById("id-producto").value;
+      if (id) cargar(`${API}/${id}`);
+    });
+  </script>
+</body>
+</html>
